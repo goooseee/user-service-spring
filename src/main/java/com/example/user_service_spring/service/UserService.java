@@ -8,9 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.user_service_spring.DTO.UserResponseDTO;
 import com.example.user_service_spring.DTO.UserCreateRequestDTO;
+import com.example.user_service_spring.DTO.UserEventDTO;
 import com.example.user_service_spring.DTO.UserUpdateRequestDTO;
 import com.example.user_service_spring.entity.User;
 import com.example.user_service_spring.exception.UserNotFoundException;
+import com.example.user_service_spring.kafka.UserEventProducer;
 import com.example.user_service_spring.mapper.UserMapper;
 import com.example.user_service_spring.repository.UserRepository;
 
@@ -22,12 +24,14 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
 	
 	private final UserRepository userRepository;
+	private final UserEventProducer userEventProducer;
 	
 	private final UserMapper mapper;
 	@Transactional
 	public UserResponseDTO saveUser(UserCreateRequestDTO dto) {
 		User user = new User(dto.name(), dto.email(), dto.age());
 		User savedUser = userRepository.save( user );
+		userEventProducer.sendUserEvent(savedUser.getEmail(), UserEventDTO.EventType.CREATED);
 		return mapper.userToDTO( savedUser );
 	}
 	
@@ -47,10 +51,10 @@ public class UserService {
 	}
 	@Transactional
 	public void deleteUserById(Long id) {
-		if (!userRepository.existsById(id)) {
-            throw new UserNotFoundException("Cannot delete. User not found with id: " + id);
-        }
+		User user = userRepository.findById(id)
+	            .orElseThrow(() -> new UserNotFoundException("Cannot delete. User not found with id: " + id));
 		userRepository.deleteById( id );
+		userEventProducer.sendUserEvent(user.getEmail(), UserEventDTO.EventType.DELETED);
 	}
 	@Transactional
 	public UserResponseDTO updateUser(Long id,UserUpdateRequestDTO dto) {
