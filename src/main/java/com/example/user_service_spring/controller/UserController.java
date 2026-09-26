@@ -91,7 +91,7 @@ public class UserController {
 	@Operation(summary = "Обновить пользователя по ID")
 	public ResponseEntity<EntityModel<UserResponseDTO>> updateUser(
             @PathVariable("id") Long id,
-            @RequestBody UserUpdateRequestDTO dto) {
+            @RequestBody @Valid UserUpdateRequestDTO dto) {
         UserResponseDTO updatedUser = userService.updateUser(id, dto);
 
         EntityModel<UserResponseDTO> resource = EntityModel.of(updatedUser,
